@@ -14,7 +14,7 @@ class CfgMods
 {
 	class DZ_GravityGun
 	{
-		name = "Mod Template";
+		name = "Gravity Gun";
 		dir = "GravityGun";
 		credits = "";
 		author = "";
