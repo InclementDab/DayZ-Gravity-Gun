@@ -26,6 +26,7 @@ class GravityGun: ItemBase
 {
 	static const float GUN_PICKUP_RANGE = 5;
 	static const float GUN_HOLD_RANGE = 1;
+	static const float GUN_POWER = 250;
 	
 	protected ref Timer m_UpdateTimer = new Timer(CALL_CATEGORY_GAMEPLAY);
 	protected Object m_ObjectUnderCrosshair;
@@ -52,7 +53,7 @@ class GravityGun: ItemBase
 			m_HoldingObject.Update();
 			return;
 		}
-		
+		/*
 		int bone = player.GetBoneIndexByName("Head");
 		
 		vector tm[4];
@@ -82,17 +83,17 @@ class GravityGun: ItemBase
 		m_ObjectUnderCrosshair = null;
 		if (results.Count() > 0) {
 			m_ObjectUnderCrosshair = results[0];
-		}
+		}*/
 	}
 	
-	void TryPickUpItem()
+	void TryPickUpItem(Object object)
 	{
-		if (!m_ObjectUnderCrosshair) {
+		if (!object) {
 			Print("No item to pick up!");
 			return;
 		}
 		
-		Print("Trying to pick up " + m_ObjectUnderCrosshair);
+		Print("Trying to pick up " + object);
 		
 		if (m_HoldingObject) {
 			Print("Already holding item");
@@ -100,10 +101,13 @@ class GravityGun: ItemBase
 			return;
 		}
 		
-		m_HoldingObject = m_ObjectUnderCrosshair;
+		m_HoldingObject = object;
 		if (dBodyIsDynamic(m_HoldingObject)) {
 			m_HoldingObject.SetDynamicPhysicsLifeTime(0.01);
 		}
+		
+		EffectSound sound;
+		PlaySoundSet(sound, "GravityGun_Pickup", 0, 0);
 	}
 	
 	void TryDropItem()
@@ -115,13 +119,26 @@ class GravityGun: ItemBase
 	
 	void TryLaunchItem(Object target)
 	{
-		m_HoldingObject = null;
-		if (target) {
-			target.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
-			target.SetDynamicPhysicsLifeTime(15.0);
-			dBodyApplyImpulse(target, GetGame().GetCurrentCameraDirection() * 500);
+		if (m_HoldingObject) {
+			LaunchItem(m_HoldingObject);
+			m_HoldingObject = null;
 			return;
 		}
+				
+		if (target) {
+			LaunchItem(target);
+		}
+	}
+	
+	private void LaunchItem(notnull Object target)
+	{
+		target.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
+		target.SetDynamicPhysicsLifeTime(15.0);
+		dBodyApplyImpulse(target, GetGame().GetCurrentCameraDirection() * GUN_POWER);
+		
+		EffectSound sound;
+		PlaySoundSet(sound, "GravityGun_Launch", 0, 0);
+		CreateCameraShake(1);
 	}
 	
 	vector GetHoldingPosition()
@@ -151,6 +168,11 @@ class GravityGun: ItemBase
 		return end;
 	}
 	
+	void CreateCameraShake(float intensity)
+	{
+		GetGame().GetPlayer().GetCurrentCamera().SpawnCameraShake(Math.Clamp(intensity, 0.2, 1), 2, 5, 10);
+	}
+	
 	override void SetActions()
 	{
 		super.SetActions();
@@ -164,7 +186,8 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	override void CreateConditionComponents()  
 	{	
 		m_ConditionItem = new CCINonRuined;
-		m_ConditionTarget = new CCTObject(UAMaxDistances.DEFAULT);
+		//m_ConditionTarget = new CCTObject(UAMaxDistances.DEFAULT);
+		m_ConditionTarget = new CCTNone;
 	}
 	
 	override void OnStartClient(ActionData action_data)
@@ -190,7 +213,6 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	
 	override bool ActionCondition(PlayerBase player, ActionTarget target, ItemBase item)
 	{
-		
 		return true;
 	}
 		
@@ -222,7 +244,7 @@ class ActionGravityGunPickUpItem: ActionSingleUseBase
 	{
 		GravityGun gravity_gun;
 		if (Class.CastTo(gravity_gun, action_data.m_MainItem)) {
-			gravity_gun.TryPickUpItem();
+			gravity_gun.TryPickUpItem(action_data.m_Target.GetObject());
 		}
 	}
 	
@@ -230,7 +252,7 @@ class ActionGravityGunPickUpItem: ActionSingleUseBase
 	{
 		GravityGun gravity_gun;
 		if (Class.CastTo(gravity_gun, action_data.m_MainItem)) {
-			gravity_gun.TryPickUpItem();
+			gravity_gun.TryPickUpItem(action_data.m_Target.GetObject());
 		}
 	}
 

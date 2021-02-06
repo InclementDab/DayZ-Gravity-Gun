@@ -35,3 +35,59 @@ class CfgVehicles
 		};
 	};
 };
+
+class CfgSoundShaders
+{
+	class GravityGun_SoundShader_Base
+	{
+		volume = 1;
+		frequency = 1;
+		limitation = 0;
+		radius = 25;
+		range = 500;
+	};
+
+	class GravityGun_Pickup_SoundShader: GravityGun_SoundShader_Base
+	{
+		samples[] = {{"GravityGun\GravityGun\sounds\physcannon_pickup", 1}};
+	};
+	
+	class GravityGun_Hold_SoundShader: GravityGun_SoundShader_Base
+	{
+		samples[] = {{"GravityGun\GravityGun\sounds\superphys_hold_loop", 1}};
+	};
+	
+	class GravityGun_Launch_SoundShader: GravityGun_SoundShader_Base
+	{
+		samples[] = {{"GravityGun\GravityGun\sounds\superphys_launch1", 1}};
+	};
+};
+
+class CfgSoundSets
+{
+	class GravityGun_Soundset
+	{
+		sound3DProcessingType = "character3DProcessingType";
+		volumeCurve = "characterAttenuationCurve";
+		spatial = 1;
+		doppler = 0;
+		loop = 0;
+        distanceFilter = "defaultDistanceFilter";
+	};
+
+	class GravityGun_Pickup: GravityGun_Soundset
+	{
+		soundShaders[] = {"GravityGun_Pickup_SoundShader"};
+	};
+	
+	class GravityGun_Hold: GravityGun_Soundset
+	{
+		soundShaders[] = {"GravityGun_Hold_SoundShader"};
+	};
+	
+	class GravityGun_Launch: GravityGun_Soundset
+	{
+		soundShaders[] = {"GravityGun_Launch_SoundShader"};
+	};
+
+};
