@@ -186,7 +186,6 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	override void CreateConditionComponents()  
 	{	
 		m_ConditionItem = new CCINonRuined;
-		//m_ConditionTarget = new CCTObject(UAMaxDistances.DEFAULT);
 		m_ConditionTarget = new CCTNone;
 	}
 	
