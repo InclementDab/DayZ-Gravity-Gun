@@ -282,14 +282,6 @@ class ActionGravityGunPickUpItem: ActionSingleUseBase
 	}
 }
 
-class GravityGunLaunchInput: DefaultActionInput
-{
-	void GravityGunLaunchInput(PlayerBase player)
-	{
-		SetInput("UAWalkRunToggle");
-	}
-}
-
 modded class ActionConstructor
 {
 	override void RegisterActions(TTypenameArray actions)
