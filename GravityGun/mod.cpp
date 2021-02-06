@@ -1,0 +1,11 @@
+name = "GravityGun";
+picture = "GravityGun/gui/images/dayz_editor_icon_black.edds";
+logo = "GravityGun/gui/images/dayz_editor_icon_black.edds";
+logoSmall = "GravityGun/gui/images/dayz_editor_icon_black.edds";
+logoOver = "GravityGun/gui/images/dayz_editor_icon_black.edds";
+tooltip = "GravityGun";
+overview = "";
+action = "";
+author = "";
+authorID = "";
+version = "";
