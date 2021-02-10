@@ -22,36 +22,35 @@ class CfgVehicles
 		model = "\GravityGun\GravityGun\GravityGun.p3d";
 		weight = 3500;
 		rotationFlags = 1;
-		itemBehaviour = 1;
-		fragility = 0.008;
 		attachments[] = {"RailgunBattery"};
 		itemSize[] = {5,2};
 		repairableWithKits[] = {7};
 		repairCosts[] = {25.0};
-		hiddenSelections[] = {"flame"};
+		hiddenSelections[] = {""};
 		hiddenSelectionsTextures[] = {""};
 		inventorySlot[] = {"Shoulder","Melee"};
 		energyResources[] = {{"power",0.1}};
-
+		isMeleeWeapon = 1;
+		
 		class AnimationSources
 		{
-			class top_claw
+			class gravitygun_top
 			{
 				source = "user";
-				initPhase = 0;
 				animPeriod = 0.01;
+				initPhase = 1;
 			};
-			class left_claw
+			class gravitygun_left
 			{
 				source = "user";
 				animPeriod = 0.01;
-				initPhase = 0;
+				initPhase = 1;
 			};
-			class right_claw
+			class gravitygun_right
 			{
 				source = "user";
 				animPeriod = 0.01;
-				initPhase = 0;
+				initPhase = 1;
 			};
 		};
 		class DamageSystem
@@ -73,7 +72,6 @@ class CfgVehicles
 			attachmentAction = 1;
 			wetnessExposure = 0.1;
 		};
-		isMeleeWeapon = 1;
 		class MeleeModes
 		{
 			class Default
