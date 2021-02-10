@@ -34,9 +34,15 @@ class GravityGun: ItemBase
 
 	protected ref OpenableBehaviour m_Openable; //ZeRoY
 	
+	protected ScriptedLightBase m_GunLight;
 	
 	void GravityGun()
 	{
+		if (IsMissionClient()) {
+			m_GunLight = ScriptedLightBase.CreateLight(GravityGunLight, ModelToWorld(GetMemoryPointPos("ce_radius")));
+			m_GunLight.AttachOnMemoryPoint(this, "ce_radius");
+		}
+		
 		m_UpdateTimer.Run(0.02, this, "OnUpdateTimer", null, true);
 		m_Openable = new OpenableBehaviour(false);  //ZeRoY
 		RegisterNetSyncVariableBool("m_Openable.m_IsOpened"); //ZeRoY
@@ -45,8 +51,6 @@ class GravityGun: ItemBase
 	void OnUpdateTimer()
 	{
 		Debug.DestroyAllShapes();
-
-		UpdateGravityGunVisualState();  //ZeRoY
 		
 		PlayerBase player = PlayerBase.Cast(GetHierarchyRootPlayer());
 		
@@ -114,7 +118,7 @@ class GravityGun: ItemBase
 		
 		EffectSound sound;
 		PlaySoundSet(sound, "GravityGun_Pickup", 0, 0);
-		IsOpen(); // ZeRoY
+		SetClawState(1);
 	}
 	
 	void TryDropItem()
@@ -122,6 +126,8 @@ class GravityGun: ItemBase
 		m_HoldingObject.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
 		m_HoldingObject.SetDynamicPhysicsLifeTime(15.0);
 		m_HoldingObject = null;
+		
+		SetClawState(0);
 	}
 	
 	void TryLaunchItem(Object target)
@@ -180,42 +186,12 @@ class GravityGun: ItemBase
 		GetGame().GetPlayer().GetCurrentCamera().SpawnCameraShake(Math.Clamp(intensity, 0.2, 1), 2, 5, 10);
 	}
 
-	//ZeRoY Start 
-
-	override void Open()
+	void SetClawState(float value)
 	{
-		m_Openable.Open();
-		UpdateGravityGunVisualState();
+		SetAnimationPhase("top_claw", value);
+		SetAnimationPhase("left_claw", value);
+		SetAnimationPhase("right_claw", value);
 	}
-
-	override void Close()
-	{
-		m_Openable.Close();
-		UpdateGravityGunVisualState();
-	}
-
-	override bool IsOpen()
-	{
-		return m_Openable.IsOpened();
-	}
-
-	protected void UpdateGravityGunVisualState()
-	{
-		if ( IsOpen() )
-		{
-			SetAnimationPhase("top_claw",1);
-			SetAnimationPhase("left_claw",1);
-			SetAnimationPhase("right_claw",1);
-		}
-		else
-		{
-			SetAnimationPhase("top_claw",0);
-			SetAnimationPhase("left_claw",0);
-			SetAnimationPhase("right_claw",0);
-		}
-	}
-
-	//ZeRoY End 
 	
 	override void SetActions()
 	{
@@ -332,5 +308,20 @@ modded class ActionConstructor
 		super.RegisterActions(actions);
 		actions.Insert(ActionGravityGunPickUpItem);
 		actions.Insert(ActionGravityGunLaunchItem);
+	}
+}
+
+class GravityGunLight: PointLightBase
+{
+	void GravityGunLight()
+	{
+		SetVisibleDuringDaylight(true);
+		SetCastShadow(false);
+		SetFlareVisible(false);
+		SetBrightnessTo(3);
+		SetRadiusTo(3);
+		// 255, 62, 0
+		SetAmbientColor(1.0, 0.24, 0);
+		SetDiffuseColor(1.0, 0.24, 0);
 	}
 }
