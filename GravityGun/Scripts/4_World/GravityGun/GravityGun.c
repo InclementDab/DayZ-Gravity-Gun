@@ -58,6 +58,8 @@ class GravityGun: ItemBase
 			return;
 		}
 		
+		Print(GetLookingDirection(player));
+		
 		if (m_HoldingObject) {
 			m_HoldingObject.SetPosition(GetHoldingPosition());
 			m_HoldingObject.Update();
@@ -191,6 +193,11 @@ class GravityGun: ItemBase
 		SetAnimationPhase("top_claw", value);
 		SetAnimationPhase("left_claw", value);
 		SetAnimationPhase("right_claw", value);
+	}
+	
+	vector GetLookingDirection(DayZPlayerImplement player)
+	{
+		return player.GetInputController().GetAimChange();
 	}
 	
 	override void SetActions()
