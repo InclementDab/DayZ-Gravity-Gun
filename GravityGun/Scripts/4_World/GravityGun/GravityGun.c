@@ -58,7 +58,6 @@ class GravityGun: ItemBase
 			return;
 		}
 		
-		
 		if (m_HoldingObject) {
 			m_HoldingObject.SetPosition(GetHoldingPosition());
 			m_HoldingObject.Update();
@@ -98,7 +97,7 @@ class GravityGun: ItemBase
 	}
 	
 	void TryPickUpItem(Object object)
-	{
+	{		
 		if (!object) {
 			Print("No item to pick up!");
 			return;
@@ -119,7 +118,7 @@ class GravityGun: ItemBase
 		
 		EffectSound sound;
 		PlaySoundSet(sound, "GravityGun_Pickup", 0, 0);
-		SetClawState(1);
+		SetClawState(0);
 	}
 	
 	void TryDropItem()
@@ -128,11 +127,12 @@ class GravityGun: ItemBase
 		m_HoldingObject.SetDynamicPhysicsLifeTime(15.0);
 		m_HoldingObject = null;
 		
-		SetClawState(0);
+		SetClawState(1);
 	}
 	
 	void TryLaunchItem(Object target)
 	{
+		SetClawState(1);
 		if (m_HoldingObject) {
 			LaunchItem(m_HoldingObject);
 			m_HoldingObject = null;
@@ -287,7 +287,7 @@ class ActionGravityGunPickUpItem: ActionSingleUseBase
 	}
 	
 	override bool ActionCondition(PlayerBase player, ActionTarget target, ItemBase item)
-	{
+	{		
 		return true;
 	}
 	
