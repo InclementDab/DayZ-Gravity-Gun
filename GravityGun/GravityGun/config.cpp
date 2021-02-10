@@ -5,7 +5,7 @@ class CfgPatches
 		units[] = {"GravityGun"};
 		weapons[] = {};
 		requiredVersion = 0.1;
-		requiredAddons[]={"DZ_Data", "DZ_Scripts"};
+		requiredAddons[]={"DZ_Data", "DZ_Scripts","DZ_Weapons_Melee"};
 		author = "InclementDab";
 		name = "GravityGun Core";
 	};
@@ -19,9 +19,41 @@ class CfgVehicles
 		scope=2;
 		displayName = "Gravity Gun";
 		descriptionShort = "A gun that harnesses Gravity to assist the user in moving heavy objects safely, without harm to the.... ah who am I kidding, go ahead, send your friend flying... you know you want to";
-		model = "\GravityGun\GravityGun\Gravity_Gun.p3d";
-		attachments[] = {};
+		model = "\GravityGun\GravityGun\GravityGun.p3d";
+		weight = 3500;
+		rotationFlags = 1;
+		itemBehaviour = 1;
+		fragility = 0.008;
+		attachments[] = {"RailgunBattery"};
 		itemSize[] = {5,2};
+		repairableWithKits[] = {7};
+		repairCosts[] = {25.0};
+		hiddenSelections[] = {"flame"};
+		hiddenSelectionsTextures[] = {""};
+		inventorySlot[] = {"Shoulder","Melee"};
+		energyResources[] = {{"power",0.1}};
+
+		class AnimationSources
+		{
+			class top_claw
+			{
+				source = "user";
+				initPhase = 0;
+				animPeriod = 0.01;
+			};
+			class left_claw
+			{
+				source = "user";
+				animPeriod = 0.01;
+				initPhase = 0;
+			};
+			class right_claw
+			{
+				source = "user";
+				animPeriod = 0.01;
+				initPhase = 0;
+			};
+		};
 		class DamageSystem
 		{
 			class GlobalHealth
@@ -31,6 +63,48 @@ class CfgVehicles
 					hitpoints = 100;
 					healthLevels[] = {{1.0,{"GravityGun\GravityGun\data\gravity_gun_emit.rvmat"}},{0.7,{"GravityGun\GravityGun\data\gravity_gun_emit.rvmat"}},{0.5,{"GravityGun\GravityGun\data\gravity_gun_damage.rvmat"}},{0.3,{"GravityGun\GravityGun\data\gravity_gun_damage.rvmat"}},{0.0,{"GravityGun\GravityGun\data\gravity_gun_destruct.rvmat"}}};
 				};
+			};
+		};
+		class EnergyManager
+		{
+			hasIcon = 1;
+			plugType = 1;
+			energyUsagePerSecond = 1.5;
+			attachmentAction = 1;
+			wetnessExposure = 0.1;
+		};
+		isMeleeWeapon = 1;
+		class MeleeModes
+		{
+			class Default
+			{
+				ammo = "MeleeLightBlunt";
+				range = 1.6;
+			};
+			class Heavy
+			{
+				ammo = "MeleeLightBlunt_Heavy";
+				range = 1.6;
+			};
+			class Sprint
+			{
+				ammo = "MeleeLightBlunt_Heavy";
+				range = 2.2;
+			};
+			class Default_SwitchedOn
+			{
+				ammo = "MeleeLightBluntShock";
+				range = 1.6;
+			};
+			class Heavy_SwitchedOn
+			{
+				ammo = "MeleeLightBluntShock_Heavy";
+				range = 1.6;
+			};
+			class Sprint_SwitchedOn
+			{
+				ammo = "MeleeLightBluntShock_Heavy";
+				range = 2.2;
 			};
 		};
 	};

@@ -31,16 +31,22 @@ class GravityGun: ItemBase
 	protected ref Timer m_UpdateTimer = new Timer(CALL_CATEGORY_GAMEPLAY);
 	protected Object m_ObjectUnderCrosshair;
 	protected Object m_HoldingObject;
+
+	protected ref OpenableBehaviour m_Openable; //ZeRoY
 	
 	
 	void GravityGun()
 	{
 		m_UpdateTimer.Run(0.02, this, "OnUpdateTimer", null, true);
+		m_Openable = new OpenableBehaviour(false);  //ZeRoY
+		RegisterNetSyncVariableBool("m_Openable.m_IsOpened"); //ZeRoY
 	}
 	
 	void OnUpdateTimer()
 	{
 		Debug.DestroyAllShapes();
+
+		UpdateGravityGunVisualState();  //ZeRoY
 		
 		PlayerBase player = PlayerBase.Cast(GetHierarchyRootPlayer());
 		
@@ -108,6 +114,7 @@ class GravityGun: ItemBase
 		
 		EffectSound sound;
 		PlaySoundSet(sound, "GravityGun_Pickup", 0, 0);
+		IsOpen(); // ZeRoY
 	}
 	
 	void TryDropItem()
@@ -172,6 +179,43 @@ class GravityGun: ItemBase
 	{
 		GetGame().GetPlayer().GetCurrentCamera().SpawnCameraShake(Math.Clamp(intensity, 0.2, 1), 2, 5, 10);
 	}
+
+	//ZeRoY Start 
+
+	override void Open()
+	{
+		m_Openable.Open();
+		UpdateGravityGunVisualState();
+	}
+
+	override void Close()
+	{
+		m_Openable.Close();
+		UpdateGravityGunVisualState();
+	}
+
+	override bool IsOpen()
+	{
+		return m_Openable.IsOpened();
+	}
+
+	protected void UpdateGravityGunVisualState()
+	{
+		if ( IsOpen() )
+		{
+			SetAnimationPhase("top_claw",1);
+			SetAnimationPhase("left_claw",1);
+			SetAnimationPhase("right_claw",1);
+		}
+		else
+		{
+			SetAnimationPhase("top_claw",0);
+			SetAnimationPhase("left_claw",0);
+			SetAnimationPhase("right_claw",0);
+		}
+	}
+
+	//ZeRoY End 
 	
 	override void SetActions()
 	{
