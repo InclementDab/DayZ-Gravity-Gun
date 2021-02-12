@@ -189,9 +189,7 @@ class GravityGun: ItemBase
 
 	void SetClawState(float value)
 	{
-		SetAnimationPhase("gravitygun_top", value);
-		SetAnimationPhase("gravitygun_left", value);
-		SetAnimationPhase("gravitygun_right", value);
+		SetAnimationPhase("gravitygun", value);
 	}
 	
 	vector GetLookingDirection(DayZPlayerImplement player)
