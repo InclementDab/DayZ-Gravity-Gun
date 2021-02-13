@@ -9,33 +9,28 @@ modded class ItemBase
 
 	override void EOnSimulate(IEntity owner, float dt)
 	{
-		peepee(dt);
+		if (Grav && Grav.m_Ready && dBodyIsDynamic(this)) Grav.ControlObject(dt);
 	}
-	
-	void peepee(float pDt)
-	{
-		if (!Grav || !Grav.m_Ready || !dBodyIsDynamic(this)) return;
+};
 
-		float mass = dBodyGetMass(this);
-		vector playerVel = GetVelocity(Grav.m_Player);
-		
-		vector trans[4];
-		GetTransform(trans);
-		
-		float distance = Math.Clamp(vector.Distance(GetPosition(), Grav.m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
-		
-		trans[3] = Grav.m_ObjectTargetPosition + (playerVel * pDt * 5.0);
-		
-		float playerVelLen = playerVel.Length();
-		float timeToMove = mass * 0.1 * distance;
-		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
-		
-		dBodySetTargetMatrix(this, trans, pDt * timeToMove);
+modded class CarScript
+{
+	GravityGun Grav;
+
+	void CarScript()
+	{
+		SetEventMask(EntityEvent.SIMULATE);
+	}
+
+	override void EOnSimulate(IEntity owner, float dt)
+	{
+		if (Grav && Grav.m_Ready && dBodyIsDynamic(this)) Grav.ControlObject(dt);
 	}
 };
 
 class GravityGun: ItemBase
 {
+	static const float GUN_MIN_RANGE = 0.5;
 	static const float GUN_PICKUP_RANGE = 10.0;
 	static const float GUN_HOLD_RANGE = 1;
 	static const float GUN_POWER = 250;
@@ -54,6 +49,7 @@ class GravityGun: ItemBase
 	float m_AimUD;
 
 	vector m_AimDirection;
+	vector m_AimPosition;
 	vector m_ObjectTargetPosition;
 	
 	void GravityGun()
@@ -63,15 +59,41 @@ class GravityGun: ItemBase
 			m_GunLight.AttachOnMemoryPoint(this, "ce_radius");
 		}
 		
-		m_UpdateTimer.Run(0.02, this, "OnUpdateTimer", null, true);
+		m_UpdateTimer.Run(0.02, this, "UpdateTargetPosition", null, true);
 	}
 	
-	void OnUpdateTimer()
+	void ControlObject(float pDt)
+	{
+		if (!m_Player) return;
+		
+		float mass = dBodyGetMass(m_HoldingObject);
+		vector playerVel = GetVelocity(m_Player);
+		
+		vector trans[4];
+		GetTransform(trans);
+		
+		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
+		
+		trans[3] = m_ObjectTargetPosition + (playerVel * pDt * 3.0);
+		
+		float playerVelLen = playerVel.Length();
+		float timeToMove = mass * 0.1 * distance;
+		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
+		
+		dBodySetTargetMatrix(m_HoldingObject, trans, pDt * timeToMove);
+	}
+	
+	void UpdateTargetPosition()
 	{
 		//Debug.DestroyAllShapes();
 		
 		m_Player = PlayerBase.Cast(GetHierarchyRootPlayer());
-		if (!m_Player) return;
+		if (!m_Player)
+		{
+			if (m_HoldingObject) RemoveObjectInField();
+			return;
+		}
+		
 		if (!m_HoldingObject) return;
 
 		m_AimLR = m_Player.GetCommandModifier_Weapons().GetBaseAimingAngleLR();
@@ -86,16 +108,20 @@ class GravityGun: ItemBase
 		//CF_Debugger_Display(dbg_GG, "AimUD", m_AimUD); 
 		//CF_Debugger_Display(dbg_GG, "AimDirection", m_AimDirection); 
 		
-		vector begin = m_Player.GetBonePositionWS(m_Player.GetBoneIndexByName("Head"));
-		vector end = begin + (m_AimDirection * GUN_HOLD_RANGE);		
-		begin = begin + (m_AimDirection * 0.5);		
+		vector minMax[2];
+		float radius = m_HoldingObject.ClippingInfo(minMax);
+		
+		m_AimPosition = m_Player.GetBonePositionWS(m_Player.GetBoneIndexByName("Head"));
+		
+		vector end = m_AimPosition + (m_AimDirection * (GUN_HOLD_RANGE + radius));		
+		vector begin = m_AimPosition + (m_AimDirection * GUN_MIN_RANGE);		
 		
 		Object hit_obj;
 		vector contact_dir;
 		float hit_fract;
-
 		PhxInteractionLayers collisionLayerMask = PhxInteractionLayers.BUILDING | PhxInteractionLayers.DYNAMICITEM | PhxInteractionLayers.TERRAIN | PhxInteractionLayers.ROADWAY;
 
+		// causes crashes, change to CastRV
 		bool hit = false;//DayZPhysics.RayCastBullet(begin, end, collisionLayerMask, m_HoldingObject, hit_obj, m_ObjectTargetPosition, contact_dir, hit_fract);
 		if (!hit) m_ObjectTargetPosition = end;
 
@@ -110,7 +136,7 @@ class GravityGun: ItemBase
 	{		
 		m_HoldingObject = object;
 		
-		OnUpdateTimer();
+		UpdateTargetPosition();
 
 		m_TimeDynamicCreated = m_HoldingObject.GetSimulationTimeStamp();
 		if (dBodyIsDynamic(m_HoldingObject)) m_TimeDynamicCreated += 30.0;
@@ -132,7 +158,14 @@ class GravityGun: ItemBase
 		ItemBase itembase;
 		if (!Class.CastTo(itembase, object))
 		{
-
+			CarScript carscript;
+			if (!Class.CastTo(carscript, object))
+			{
+	
+			} else
+			{
+				carscript.Grav = gun;
+			}
 		} else
 		{
 			itembase.Grav = gun;
@@ -173,7 +206,10 @@ class GravityGun: ItemBase
 		if (isSelf)	target.SetDynamicPhysicsLifeTime(m_HoldingObject.GetSimulationTimeStamp() - m_TimeDynamicCreated + 30.0);
 		else target.SetDynamicPhysicsLifeTime(30.0);
 		
-		dBodyApplyImpulse(target, GetGame().GetCurrentCameraDirection() * GUN_POWER);
+		float mass = dBodyGetMass(target);
+		float massScale = Math.Clamp(0.2 / mass, 0.1, 2.0);
+		
+		dBodyApplyImpulse(target, m_AimDirection * GUN_POWER * massScale);
 		
 		EffectSound sound;
 		PlaySoundSet(sound, "GravityGun_Launch", 0, 0);
