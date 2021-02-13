@@ -1,40 +1,55 @@
-
-modded class PlayerBase
+modded class ItemBase
 {
-	vector GGAim;
-	
-	override bool HeadingModel(float pDt, SDayZPlayerHeadingModel pModel)
+	GravityGun Grav;
+
+	void ItemBase()
 	{
-		//Print(pModel.m_fHeadingAngle);
-		
-		return super.HeadingModel(pDt, pModel);
+		SetEventMask(EntityEvent.SIMULATE);
 	}
-	
-	override bool AimingModel(float pDt, SDayZPlayerAimingModel pModel)
+
+	override void EOnSimulate(IEntity owner, float dt)
 	{
-		//Print(pModel.m_fCurrentAimX);
-		//Print(pModel.m_fCurrentAimY);
-		
-		GGAim[0] = pModel.m_fCurrentAimX;
-		GGAim[2] = pModel.m_fCurrentAimY;
-		
-		return super.AimingModel(pDt, pModel);
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlObject(dt);
 	}
-}
+};
+
+modded class CarScript
+{
+	GravityGun Grav;
+
+	void CarScript()
+	{
+		SetEventMask(EntityEvent.SIMULATE);
+	}
+
+	override void EOnSimulate(IEntity owner, float dt)
+	{
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlObject(dt);
+	}
+};
 
 class GravityGun: ItemBase
 {
-	static const float GUN_PICKUP_RANGE = 5;
+	static const float GUN_MIN_RANGE = 0.5;
+	static const float GUN_PICKUP_RANGE = 10.0;
 	static const float GUN_HOLD_RANGE = 1;
 	static const float GUN_POWER = 250;
 	
 	protected ref Timer m_UpdateTimer = new Timer(CALL_CATEGORY_GAMEPLAY);
-	protected Object m_ObjectUnderCrosshair;
-	protected Object m_HoldingObject;
 
-	protected ref OpenableBehaviour m_Openable; //ZeRoY
+	ScriptedLightBase m_GunLight;
 	
-	protected ScriptedLightBase m_GunLight;
+	PlayerBase m_Player;
+
+	int m_TimeDynamicCreated;
+	Entity m_HoldingObject;
+
+	float m_AimLR;
+	float m_AimUD;
+
+	vector m_AimDirection;
+	vector m_AimPosition;
+	vector m_ObjectTargetPosition;
 	
 	void GravityGun()
 	{
@@ -43,145 +58,203 @@ class GravityGun: ItemBase
 			m_GunLight.AttachOnMemoryPoint(this, "ce_radius");
 		}
 		
-		m_UpdateTimer.Run(0.02, this, "OnUpdateTimer", null, true);
-		m_Openable = new OpenableBehaviour(false);  //ZeRoY
-		RegisterNetSyncVariableBool("m_Openable.m_IsOpened"); //ZeRoY
+		m_UpdateTimer.Run(0.02, this, "OnUpdate", null, true);
 	}
 	
-	void OnUpdateTimer()
+	void ControlObject(float pDt)
+	{
+		if (!m_Player) return;
+		
+		float mass = dBodyGetMass(m_HoldingObject);
+		vector playerVel = GetVelocity(m_Player);
+		
+		vector trans[4];
+		GetTransform(trans);
+		
+		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
+		
+		trans[3] = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(this) * distance * 100.0);
+		
+		float playerVelLen = playerVel.Length();
+		float timeToMove = mass * 0.1 * distance;
+		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
+		
+		dBodySetTargetMatrix(m_HoldingObject, trans, pDt * timeToMove);
+	}
+	
+	void OnUpdate()
 	{
 		Debug.DestroyAllShapes();
 		
-		PlayerBase player = PlayerBase.Cast(GetHierarchyRootPlayer());
-		
-		if (!player) {
+		m_Player = PlayerBase.Cast(GetHierarchyRootPlayer());
+		if (!m_Player)
+		{
+			if (m_HoldingObject) RemoveObjectInField();
 			return;
 		}
 		
-		if (m_HoldingObject) {
-			m_HoldingObject.SetPosition(GetHoldingPosition());
-			m_HoldingObject.Update();
-			return;
+		m_AimLR = m_Player.GetCommandModifier_Weapons().GetBaseAimingAngleLR();
+		m_AimUD = m_Player.GetCommandModifier_Weapons().GetBaseAimingAngleUD();
+		m_AimLR = m_AimLR + m_Player.GetOrientation()[0];
+		m_AimDirection = Vector(m_AimLR, m_AimUD, 0).AnglesToVector();
+		m_AimPosition = m_Player.GetBonePositionWS(m_Player.GetBoneIndexByName("Head"));
+		
+		Class dbg_GG = CF_Debugger_Get("GravityGun", this);
+		CF_Debugger_Display(dbg_GG, "m_HoldingObject", m_HoldingObject);
+		CF_Debugger_Display(dbg_GG, "m_Player.IsRaised()", m_Player.IsRaised());
+		CF_Debugger_Display(dbg_GG, "m_Player.GetPosition()", m_Player.GetPosition());
+		
+		int state = -1;
+		
+		if (m_Player.IsRaised() && !m_HoldingObject)
+		{
+			state = 0;
+			
+			UpdateHeldTarget();
 		}
-		/*
-		int bone = player.GetBoneIndexByName("Head");
-		
-		vector tm[4];
-		player.GetBoneTransformWS(bone, tm);
-		
-		vector head_ori = player.GetOrientation().AnglesToVector();
-		head_ori[1] = tm[1][1];
-		
-		vector dir = MiscGameplayFunctions.GetHeadingVector(player);		
-		vector begin = tm[3] + (GetGame().GetCurrentCameraDirection() * 0.02);
-		vector end = begin + (GetGame().GetCurrentCameraDirection() * GUN_PICKUP_RANGE);
-		
-		Debug.DrawLine(begin, end);
-		
-		vector contact_pos, contact_dir;
-		int contact_component;
-		set<Object> results = new set<Object>();
-		
-		if (!DayZPhysics.RaycastRV(begin, end, contact_pos, contact_dir, contact_component, results, null, GetHierarchyRootPlayer(), false, false, ObjIntersectView, 0.25)) {
-			return;
+		else if (!m_Player.IsRaised() && m_HoldingObject)
+		{
+			state = 1;
+			
+			RemoveObjectInField();
+		}	
+		else if (m_HoldingObject)
+		{
+			state = 2;
+			
+			UpdateTargetPosition();
 		}
 		
-		if (GetGame().IsClient()) {
-			Debug.DrawCube(contact_pos, 0.25);
-		}
+		CF_Debugger_Display(dbg_GG, "state", state);
+	}
+
+	void UpdateHeldTarget()
+	{
+		Class dbg_GG = CF_Debugger_Get("GravityGun", this);
 		
-		m_ObjectUnderCrosshair = null;
-		if (results.Count() > 0) {
-			m_ObjectUnderCrosshair = results[0];
-		}*/
+		vector begin = m_AimPosition + (m_AimDirection * GUN_MIN_RANGE);
+		vector end = m_AimPosition + (m_AimDirection * GUN_PICKUP_RANGE);
+		vector contactPos = end;
+		vector contactDir;
+		int contactComponent;
+		set<Object> results();
+		bool hit = DayZPhysics.RaycastRV(begin, end, contactPos, contactDir, contactComponent, results, NULL, m_Player, false, false, ObjIntersectGeom);
+				
+		CF_Debugger_Display(dbg_GG, "results", results.Count());
+		CF_Debugger_Display(dbg_GG, "begin", begin);
+		CF_Debugger_Display(dbg_GG, "end", end);
+			
+		//int colour = COLOR_GREEN;
+		//if (hit) colour = COLOR_RED;
+		//Debug.DrawLine(begin, contactPos, colour, ShapeFlags.TRANSP);
+		
+		if (results.Count() > 0) SetObjectInField(Entity.Cast(results[0]));
 	}
 	
-	void TryPickUpItem(Object object)
-	{		
-		if (!object) {
-			Print("No item to pick up!");
-			return;
-		}
+	void UpdateTargetPosition()
+	{
+		if (!m_HoldingObject) return;
 		
-		Print("Trying to pick up " + object);
-		
-		if (m_HoldingObject) {
-			Print("Already holding item");
-			TryDropItem();
-			return;
-		}
+		vector minMax[2];
+		float radius = m_HoldingObject.ClippingInfo(minMax);
+	
+		vector begin = m_AimPosition + (m_AimDirection * GUN_MIN_RANGE);
+		vector end = m_AimPosition + (m_AimDirection * (GUN_HOLD_RANGE + radius));
+
+		vector contactDir;
+		int contactComponent;
+		set<Object> results();
+		bool hit = DayZPhysics.RaycastRV(begin, end, m_ObjectTargetPosition, contactDir, contactComponent, results, NULL, m_HoldingObject, false, false, ObjIntersectGeom);		
+		if (!hit) m_ObjectTargetPosition = end;
+
+		int colour = COLOR_GREEN;
+		if (hit) colour = COLOR_RED;
+		Debug.DrawLine(begin, m_ObjectTargetPosition, colour, ShapeFlags.TRANSP);
+	}
+	
+	void SetObjectInField(Entity object)
+	{
+		if (!SetGravityGunOnObject(object, this)) return;
 		
 		m_HoldingObject = object;
-		if (dBodyIsDynamic(m_HoldingObject)) {
-			m_HoldingObject.SetDynamicPhysicsLifeTime(0.01);
-		}
+
+		m_TimeDynamicCreated = m_HoldingObject.GetSimulationTimeStamp();
+		if (dBodyIsDynamic(m_HoldingObject)) m_TimeDynamicCreated += 30.0;
+
+		if (!dBodyIsDynamic(m_HoldingObject)) m_HoldingObject.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
+
+		m_HoldingObject.SetDynamicPhysicsLifeTime(-1);
 		
 		EffectSound sound;
 		PlaySoundSet(sound, "GravityGun_Pickup", 0, 0);
+
 		SetClawState(0);
 	}
+
+	private bool SetGravityGunOnObject(Entity object, GravityGun gun)
+	{		
+		// messy :)))
+		ItemBase itembase;
+		if (!Class.CastTo(itembase, object))
+		{
+			CarScript carscript;
+			if (!Class.CastTo(carscript, object))
+			{
+				return false;
+			} else
+			{
+				carscript.Grav = gun;
+			}
+		} else
+		{
+			itembase.Grav = gun;
+		}
+		
+		return true;
+	}
 	
-	void TryDropItem()
+	void RemoveObjectInField()
 	{
-		m_HoldingObject.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
-		m_HoldingObject.SetDynamicPhysicsLifeTime(15.0);
+		if (!SetGravityGunOnObject(m_HoldingObject, null)) return;
+
+		m_HoldingObject.SetDynamicPhysicsLifeTime(m_HoldingObject.GetSimulationTimeStamp() - m_TimeDynamicCreated + 30.0);
 		m_HoldingObject = null;
 		
 		SetClawState(1);
 	}
 	
-	void TryLaunchItem(Object target)
+	void LaunchObjectInField(Entity target)
 	{
-		SetClawState(1);
 		if (m_HoldingObject) {
-			LaunchItem(m_HoldingObject);
+			SetGravityGunOnObject(m_HoldingObject, null);
+			LaunchObject(m_HoldingObject);
 			m_HoldingObject = null;
-			return;
+		} else if (target) {
+			LaunchObject(target);
 		}
-				
-		if (target) {
-			LaunchItem(target);
-		}
+
+		SetClawState(1);
 	}
 	
-	private void LaunchItem(notnull Object target)
+	private void LaunchObject(notnull Entity target, bool isSelf = true)
 	{
-		target.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
-		target.SetDynamicPhysicsLifeTime(15.0);
-		dBodyApplyImpulse(target, GetGame().GetCurrentCameraDirection() * GUN_POWER);
+		if (!SetGravityGunOnObject(target, null)) return;
+		
+		if (!isSelf) target.CreateDynamicPhysics(PhxInteractionLayers.DYNAMICITEM);
+		
+		if (isSelf)	target.SetDynamicPhysicsLifeTime(m_HoldingObject.GetSimulationTimeStamp() - m_TimeDynamicCreated + 30.0);
+		else target.SetDynamicPhysicsLifeTime(30.0);
+		
+		float mass = dBodyGetMass(target);
+		float massScale = Math.Clamp(0.2 / mass, 0.1, 2.0);
+		
+		dBodyApplyImpulse(target, m_AimDirection * GUN_POWER * massScale);
 		
 		EffectSound sound;
 		PlaySoundSet(sound, "GravityGun_Launch", 0, 0);
 		CreateCameraShake(1);
 	}
-	
-	vector GetHoldingPosition()
-	{
-		PlayerBase player = PlayerBase.Cast(GetHierarchyRootPlayer());
 		
-		if (!player) {
-			return vector.Zero;
-		}
-		
-		vector tm[4];
-		player.GetBoneTransformWS(player.GetBoneIndexByName("Head"), tm);
-		
-		vector head_ori = player.GetOrientation().AnglesToVector();
-		head_ori[1] = tm[1][1];
-		
-		vector begin = tm[3] + (GetGame().GetCurrentCameraDirection() * 0.02);
-		vector end = begin + (GetGame().GetCurrentCameraDirection() * GUN_HOLD_RANGE);		
-		vector contact_pos, contact_dir;
-		
-		Object hit_obj;
-		float hit_fract;
-		if (DayZPhysics.RayCastBullet(begin, end, PhxInteractionLayers.BUILDING | PhxInteractionLayers.DYNAMICITEM | PhxInteractionLayers.TERRAIN | PhxInteractionLayers.ROADWAY, m_HoldingObject, hit_obj, contact_pos, contact_dir, hit_fract)) {
-			return contact_pos;
-		}
-		
-		return end;
-	}
-	
 	void CreateCameraShake(float intensity)
 	{
 		GetGame().GetPlayer().GetCurrentCamera().SpawnCameraShake(Math.Clamp(intensity, 0.2, 1), 2, 5, 10);
@@ -192,15 +265,10 @@ class GravityGun: ItemBase
 		SetAnimationPhase("gravitygun", value);
 	}
 	
-	vector GetLookingDirection(DayZPlayerImplement player)
-	{
-		return player.GetInputController().GetAimChange();
-	}
-	
 	override void SetActions()
 	{
 		super.SetActions();
-		AddAction(ActionGravityGunPickUpItem);
+
 		AddAction(ActionGravityGunLaunchItem);
 	}
 }
@@ -217,7 +285,7 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	{
 		GravityGun gravity_gun;
 		if (Class.CastTo(gravity_gun, action_data.m_MainItem)) {
-			gravity_gun.TryLaunchItem(action_data.m_Target.GetObject());
+			gravity_gun.LaunchObjectInField(Entity.Cast(action_data.m_Target.GetObject()));
 		}
 	}
 	
@@ -225,7 +293,7 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	{
 		GravityGun gravity_gun;
 		if (Class.CastTo(gravity_gun, action_data.m_MainItem)) {
-			gravity_gun.TryLaunchItem(action_data.m_Target.GetObject());
+			gravity_gun.LaunchObjectInField(Entity.Cast(action_data.m_Target.GetObject()));
 		}
 	}
 	
@@ -236,6 +304,11 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	
 	override bool ActionCondition(PlayerBase player, ActionTarget target, ItemBase item)
 	{
+		GravityGun gravity_gun;
+		if (!Class.CastTo(gravity_gun, item)) return false;
+		
+		if (!gravity_gun.m_HoldingObject) return false;
+		
 		return true;
 	}
 		
@@ -255,62 +328,12 @@ class ActionGravityGunLaunchItem: ActionInteractBase
 	}
 }
 
-class ActionGravityGunPickUpItem: ActionSingleUseBase
-{		
-	override void CreateConditionComponents()  
-	{	
-		m_ConditionItem = new CCINonRuined;
-		m_ConditionTarget = new CCTObject(UAMaxDistances.DEFAULT);
-	}
-		
-	override void OnStartClient(ActionData action_data)
-	{
-		GravityGun gravity_gun;
-		if (Class.CastTo(gravity_gun, action_data.m_MainItem)) {
-			gravity_gun.TryPickUpItem(action_data.m_Target.GetObject());
-		}
-	}
-	
-	override void OnStartServer(ActionData action_data)
-	{
-		GravityGun gravity_gun;
-		if (Class.CastTo(gravity_gun, action_data.m_MainItem)) {
-			gravity_gun.TryPickUpItem(action_data.m_Target.GetObject());
-		}
-	}
-
-	override bool HasTarget()
-	{
-		return true;
-	}
-	
-	override bool ActionCondition(PlayerBase player, ActionTarget target, ItemBase item)
-	{		
-		return true;
-	}
-	
-	override typename GetInputType()
-	{
-		return DefaultActionInput;
-	}
-	
-	override bool IsInstant()
-	{
-		return true;
-	}
-	
-	override string GetText()
-	{
-		return "Yoink";
-	}
-}
-
 modded class ActionConstructor
 {
 	override void RegisterActions(TTypenameArray actions)
 	{
 		super.RegisterActions(actions);
-		actions.Insert(ActionGravityGunPickUpItem);
+		
 		actions.Insert(ActionGravityGunLaunchItem);
 	}
 }

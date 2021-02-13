@@ -1,16 +1,7 @@
-modded class PlayerBase extends ManBase
+modded class JMAnimRegister
 {
-    override void Init()
+    override void RegisterFireArms(DayZPlayerType pType, DayzPlayerItemBehaviorCfg pBehavior)
     {
-        if ( !GetGame().IsServer() || !GetGame().IsMultiplayer() ) 
-        {
-
-		    DayzPlayerItemBehaviorCfg 	fireArmsItemBehaviour = new DayzPlayerItemBehaviorCfg;
-		    fireArmsItemBehaviour.SetFirearms();
-
-            GetDayZPlayerType().AddItemInHandsProfileIK("GravityGun", "dz/anims/workspaces/player/player_main/weapons/player_main_repeater.asi", fireArmsItemBehaviour, "dz/anims/anm/player/ik/weapons/repeater.anm");
-        }
-        
-        super.Init();
+        pType.AddItemInHandsProfileIK("GravityGun", "dz/anims/workspaces/player/player_main/weapons/player_main_repeater.asi", pBehavior, "dz/anims/anm/player/ik/weapons/repeater.anm");
     }
 }
