@@ -28,6 +28,21 @@ modded class CarScript
 	}
 };
 
+modded class PlayerBase
+{
+	GravityGun Grav;
+
+	void PlayerBase()
+	{
+		SetEventMask(EntityEvent.SIMULATE);
+	}
+
+	override void EOnSimulate(IEntity owner, float dt)
+	{
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlObject(dt);
+	}
+}
+
 class GravityGun: ItemBase
 {
 	static const float GUN_MIN_RANGE = 0.5;
@@ -193,24 +208,25 @@ class GravityGun: ItemBase
 
 	private bool SetGravityGunOnObject(Entity object, GravityGun gun)
 	{		
-		// messy :)))
-		ItemBase itembase;
-		if (!Class.CastTo(itembase, object))
-		{
-			CarScript carscript;
-			if (!Class.CastTo(carscript, object))
-			{
-				return false;
-			} else
-			{
-				carscript.Grav = gun;
-			}
-		} else
-		{
-			itembase.Grav = gun;
+		ItemBase item;
+		if (Class.CastTo(item, object)) {
+			item.Grav = gun;
+			return true;
 		}
 		
-		return true;
+		CarScript car;
+		if (Class.CastTo(car, object)) {
+			car.Grav = gun;
+			return true;
+		}
+		
+		PlayerBase player;
+		if (Class.CastTo(player, object)) {
+			player.Grav = gun;
+			return true;
+		}
+		
+		return false;
 	}
 	
 	void RemoveObjectInField()
