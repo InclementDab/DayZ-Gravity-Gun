@@ -104,6 +104,8 @@ class GravityGun: ItemBase
 		float mass = dBodyGetMass(m_HoldingObject);
 		vector playerVel = GetVelocity(m_Player);
 		
+		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
+		
 		vector currentPosition = m_HoldingObject.GetPosition();
 		vector targetPosition = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(this) * distance * 100.0);
 		
