@@ -39,9 +39,39 @@ modded class PlayerBase
 
 	override void EOnSimulate(IEntity owner, float dt)
 	{
-		if (Grav && dBodyIsDynamic(this)) Grav.ControlPlayer(dt);
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlKinematic(dt);
 	}
-}
+};
+
+modded class ZombieBase
+{
+	GravityGun Grav;
+
+	void ZombieBase()
+	{
+		SetEventMask(EntityEvent.SIMULATE);
+	}
+
+	override void EOnSimulate(IEntity owner, float dt)
+	{
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlKinematic(dt);
+	}
+};
+
+modded class AnimalBase
+{
+	GravityGun Grav;
+
+	void AnimalBase()
+	{
+		SetEventMask(EntityEvent.SIMULATE);
+	}
+
+	override void EOnSimulate(IEntity owner, float dt)
+	{
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlKinematic(dt);
+	}
+};
 
 class GravityGun: ItemBase
 {
@@ -79,6 +109,8 @@ class GravityGun: ItemBase
 	void ControlObject(float pDt)
 	{
 		if (!m_Player) return;
+
+		UpdateTargetPosition();
 		
 		float mass = dBodyGetMass(m_HoldingObject);
 		vector playerVel = GetVelocity(m_Player);
@@ -88,24 +120,27 @@ class GravityGun: ItemBase
 		
 		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
 		
-		trans[3] = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(this) * distance * 100.0);
+		trans[3] = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(m_HoldingObject) * distance * 100.0);
 		
 		float playerVelLen = playerVel.Length();
 		float timeToMove = mass * 0.1 * distance;
 		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
+		if (timeToMove < 1.0) timeToMove = 1.0;
 		
 		dBodySetTargetMatrix(m_HoldingObject, trans, pDt * timeToMove);
 	}
 	
-	void ControlPlayer(float pDt)
+	void ControlKinematic(float pDt)
 	{
 		if (!m_Player) return;
+
+		UpdateTargetPosition();
 		
 		float mass = dBodyGetMass(m_HoldingObject);
 		vector playerVel = GetVelocity(m_Player);
 		
 		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
-		
+
 		vector currentPosition = m_HoldingObject.GetPosition();
 		vector targetPosition = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(this) * distance * 100.0);
 		
@@ -113,7 +148,7 @@ class GravityGun: ItemBase
 		float timeToMove = mass * 0.1 * distance;
 		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
 
-		m_HoldingObject.SetPosition(vector.Lerp(currentPosition, targetPosition, timeToMove));
+		m_HoldingObject.SetPosition(m_ObjectTargetPosition);
 	}
 	
 	void OnUpdate()
@@ -133,10 +168,10 @@ class GravityGun: ItemBase
 		m_AimDirection = Vector(m_AimLR, m_AimUD, 0).AnglesToVector();
 		m_AimPosition = m_Player.GetBonePositionWS(m_Player.GetBoneIndexByName("Head"));
 		
-		Class dbg_GG = CF_Debugger_Get("GravityGun", this);
-		CF_Debugger_Display(dbg_GG, "m_HoldingObject", m_HoldingObject);
-		CF_Debugger_Display(dbg_GG, "m_Player.IsRaised()", m_Player.IsRaised());
-		CF_Debugger_Display(dbg_GG, "m_Player.GetPosition()", m_Player.GetPosition());
+		//Class dbg_GG = CF_Debugger_Get("GravityGun", this);
+		//CF_Debugger_Display(dbg_GG, "m_HoldingObject", m_HoldingObject);
+		//CF_Debugger_Display(dbg_GG, "m_Player.IsRaised()", m_Player.IsRaised());
+		//CF_Debugger_Display(dbg_GG, "m_Player.GetPosition()", m_Player.GetPosition());
 		
 		int state = -1;
 		
@@ -156,15 +191,15 @@ class GravityGun: ItemBase
 		{
 			state = 2;
 			
-			UpdateTargetPosition();
+			//UpdateTargetPosition();
 		}
 		
-		CF_Debugger_Display(dbg_GG, "state", state);
+		//CF_Debugger_Display(dbg_GG, "state", state);
 	}
 
 	void UpdateHeldTarget()
 	{
-		Class dbg_GG = CF_Debugger_Get("GravityGun", this);
+		//Class dbg_GG = CF_Debugger_Get("GravityGun", this);
 		
 		vector begin = m_AimPosition + (m_AimDirection * GUN_MIN_RANGE);
 		vector end = m_AimPosition + (m_AimDirection * GUN_PICKUP_RANGE);
@@ -174,9 +209,9 @@ class GravityGun: ItemBase
 		set<Object> results();
 		bool hit = DayZPhysics.RaycastRV(begin, end, contactPos, contactDir, contactComponent, results, NULL, m_Player, false, false, ObjIntersectGeom);
 				
-		CF_Debugger_Display(dbg_GG, "results", results.Count());
-		CF_Debugger_Display(dbg_GG, "begin", begin);
-		CF_Debugger_Display(dbg_GG, "end", end);
+		//CF_Debugger_Display(dbg_GG, "results", results.Count());
+		//CF_Debugger_Display(dbg_GG, "begin", begin);
+		//CF_Debugger_Display(dbg_GG, "end", end);
 			
 		//int colour = COLOR_GREEN;
 		//if (hit) colour = COLOR_RED;
@@ -187,8 +222,6 @@ class GravityGun: ItemBase
 	
 	void UpdateTargetPosition()
 	{
-		if (!m_HoldingObject) return;
-		
 		vector minMax[2];
 		float radius = m_HoldingObject.ClippingInfo(minMax);
 	
