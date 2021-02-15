@@ -120,7 +120,7 @@ class GravityGun: ItemBase
 		
 		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
 		
-		trans[3] = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(m_HoldingObject) * distance * 100.0);
+		trans[3] = m_ObjectTargetPosition + (playerVel * pDt * 3.0);// + (GetVelocity(m_HoldingObject) * distance * 100.0);
 		
 		float playerVelLen = playerVel.Length();
 		float timeToMove = mass * 0.1 * distance;
@@ -142,7 +142,7 @@ class GravityGun: ItemBase
 		float distance = Math.Clamp(vector.Distance(GetPosition(), m_ObjectTargetPosition) - 2.0, 1.0, 10.0);
 
 		vector currentPosition = m_HoldingObject.GetPosition();
-		vector targetPosition = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(this) * distance * 100.0);
+		vector targetPosition = m_ObjectTargetPosition + (playerVel * pDt * 3.0);// + (GetVelocity(this) * distance * 100.0);
 		
 		float playerVelLen = playerVel.Length();
 		float timeToMove = mass * 0.1 * distance;
