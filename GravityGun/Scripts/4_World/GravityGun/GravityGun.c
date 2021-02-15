@@ -278,6 +278,18 @@ class GravityGun: ItemBase
 			return true;
 		}
 		
+		ZombieBase zombie;
+		if (Class.CastTo(zombie, object)) {
+			zombie.Grav = gun;
+			return true;
+		}
+		
+		AnimalBase animal;
+		if (Class.CastTo(animal, object)) {
+			animal.Grav = gun;
+			return true;
+		}
+		
 		return false;
 	}
 	
