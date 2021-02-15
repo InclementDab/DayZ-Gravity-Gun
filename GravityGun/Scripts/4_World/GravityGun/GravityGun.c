@@ -39,7 +39,7 @@ modded class PlayerBase
 
 	override void EOnSimulate(IEntity owner, float dt)
 	{
-		if (Grav && dBodyIsDynamic(this)) Grav.ControlObject(dt);
+		if (Grav && dBodyIsDynamic(this)) Grav.ControlPlayer(dt);
 	}
 }
 
@@ -95,6 +95,23 @@ class GravityGun: ItemBase
 		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
 		
 		dBodySetTargetMatrix(m_HoldingObject, trans, pDt * timeToMove);
+	}
+	
+	void ControlPlayer(float pDt)
+	{
+		if (!m_Player) return;
+		
+		float mass = dBodyGetMass(m_HoldingObject);
+		vector playerVel = GetVelocity(m_Player);
+		
+		vector currentPosition = m_HoldingObject.GetPosition();
+		vector targetPosition = m_ObjectTargetPosition + (playerVel * pDt * 3.0) + (GetVelocity(this) * distance * 100.0);
+		
+		float playerVelLen = playerVel.Length();
+		float timeToMove = mass * 0.1 * distance;
+		if (playerVelLen > 1.0) timeToMove = timeToMove / playerVelLen;
+
+		m_HoldingObject.SetPosition(vector.Lerp(currentPosition, targetPosition, timeToMove));
 	}
 	
 	void OnUpdate()
